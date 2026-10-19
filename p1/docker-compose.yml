@@ -1,4 +1,4 @@
-name: p1
+name: asgbd-p1
 
 services:
   init-perms:
