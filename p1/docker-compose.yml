@@ -1,0 +1,56 @@
+name: p1
+
+services:
+  init-perms:
+    image: alpine:3.20
+    user: root
+    command: chown -R 999:999 /tbs/erp /tbs/empleados /logs
+    volumes:
+      - vol_erp:/tbs/erp
+      - vol_empleados:/tbs/empleados
+      - vol_logs:/logs
+
+  db:
+    container_name: empresa-db
+    image: postgres:16.4
+    restart: unless-stopped
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      init-perms:
+        condition: service_completed_successfully
+    mem_limit: 2g
+    memswap_limit: 2g
+    shm_size: 512m
+    networks: [interna, visitantes]
+    volumes:
+      - ./conf:/etc/postgresql:ro
+      - vol_pgdata:/var/lib/postgresql/data
+      - vol_erp:/tablespaces/erp
+      - vol_empleados:/tablespaces/empleados
+      - vol_logs:/var/log/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+networks:
+  interna:
+    name: p1_interna
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  visitantes:
+    name: p1_visitantes
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+
+volumes:
+  vol_pgdata:
+  vol_erp:
+  vol_empleados:
+  vol_logs:

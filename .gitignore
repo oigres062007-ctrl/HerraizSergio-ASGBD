@@ -1,0 +1,9 @@
+# Contraseñas y configuración sensible
+.env
+**/.env
+
+# Basura del sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
