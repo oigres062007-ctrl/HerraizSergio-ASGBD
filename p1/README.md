@@ -176,7 +176,7 @@ Thumbs.db
 git check-ignore -v p1/.env
 ```
 
-![Comprobación de que .env está ignorado](img/captura-1.png)
+![Comprobación de que .env está ignorado](img/img1.png)
 
 ### 1.4 Script `setup-env.sh`
 
@@ -240,7 +240,7 @@ Entorno listo.
 
 > La salida original se hizo con el nombre de proyecto anterior (`p1`). Hoy los volúmenes se llaman `asgbd-p1_vol_*` (véase el apartado de problemas).
 
-![Montaje desde cero con setup-env.sh](img/captura-2.png)
+![Montaje desde cero con setup-env.sh](img/img2.png)
 
 ### 1.6 Evidencia: versión, puertos, memoria y redes
 
@@ -277,7 +277,7 @@ PostgreSQL 16.4 (Debian 16.4-1.pgdg120+2) on x86_64-pc-linux-gnu, compiled by gc
 | Memoria y swap | 2147483648 (= 2 GiB) ambos | Límite real, sin swap |
 | IPs | `172.30.0.2` y `172.31.0.2` | Conectado a las dos redes |
 
-![Estado, puertos, memoria y redes](img/captura-3.png)
+![Estado, puertos, memoria y redes](img/img3.png)
 
 ### 1.7 Evidencia: destruir el servidor y conservar los datos
 
@@ -306,7 +306,7 @@ docker exec empresa-db psql -U postgres -d empresa -c "SELECT count(*) FROM erp.
 
 `docker compose down` elimina contenedores y redes pero **no los volúmenes**. Al recrear el contenedor, PostgreSQL reutiliza los datos de `vol_pgdata`.
 
-![Persistencia tras destruir el contenedor](img/captura-4.png)
+![Persistencia tras destruir el contenedor](img/img4.png)
 
 ---
 
@@ -341,7 +341,7 @@ PostgreSQL lee las reglas de arriba abajo y aplica **la primera que coincide**. 
 docker exec empresa-db psql -U postgres -c "SELECT line_number, type, address, auth_method FROM pg_hba_file_rules;"
 ```
 
-![Reglas de pg_hba cargadas](img/captura-5.png)
+![Reglas de pg_hba cargadas](img/img5.png)
 
 ### 2.3 Cliente de la red interna: conecta
 
@@ -351,7 +351,7 @@ docker run --rm --network p1_interna -e PGPASSWORD="$INITIAL_USER_PASSWORD" \
   -c "SELECT current_user, inet_client_addr(), inet_server_addr();"
 ```
 
-![Cliente interno conectado](img/captura-6.png)
+![Cliente interno conectado](img/img6.png)
 
 ### 2.4 Cliente de la red de visitantes: rechazado por el SGBD
 
@@ -378,7 +378,7 @@ psql: error: connection to server at "db" (172.31.0.2), port 5432 failed: FATAL:
 
 **Conclusión:** la red permite llegar al servidor (`accepting connections`), pero el mensaje procede de `pg_hba.conf`. El rechazo es una decisión del SGBD, no una ausencia de ruta.
 
-![Visitante rechazado por pg_hba.conf](img/captura-7.png)
+![Visitante rechazado por pg_hba.conf](img/img7.png)
 
 ---
 
@@ -453,7 +453,7 @@ CONTAINER ID   NAME         CPU %     MEM USAGE / LIMIT   MEM %     NET I/O     
 
 **Sobre `docker stats`:** en reposo el contenedor usa 40 MiB, muy por debajo de los 2 GiB. No contradice el cálculo: los 1731 MB son el **peor caso** (todas las sesiones al máximo a la vez), no el uso normal. `shared_buffers` se reserva como espacio de direcciones pero el sistema operativo no asigna las páginas hasta que se tocan.
 
-![Parámetros de memoria en uso](img/captura-8.png)
+![Parámetros de memoria en uso](img/img8.png)
 
 ### 3.5 Parámetro que se cambia SIN reiniciar: `work_mem`
 
@@ -482,7 +482,7 @@ ALTER SYSTEM
 
 El valor pasa de `4MB` a `8MB` con un simple `pg_reload_conf()`, sin reiniciar el servidor. Su contexto es `user`.
 
-![work_mem cambiado sin reinicio](img/captura-9.png)
+![work_mem cambiado sin reinicio](img/img9.png)
 
 ### 3.6 Parámetro que REQUIERE reinicio: `shared_buffers`
 
@@ -519,7 +519,7 @@ empresa-db
 
 Tras recargar, el valor en uso **sigue siendo 512MB** y `pending_restart = t` indica que hay un cambio pendiente. Solo cambia a `256MB` después de reiniciar el contenedor. Su contexto es `postmaster`.
 
-![shared_buffers solo cambia tras reiniciar](img/captura-10.png)
+![shared_buffers solo cambia tras reiniciar](img/img10.png)
 
 ### 3.7 Limpieza: volver a los valores calculados
 
@@ -571,7 +571,7 @@ Para usuarios normales quedan 52 conexiones (55 − 3), que cubren las 50 necesa
 docker exec empresa-db psql -U postgres -c "SHOW max_connections;" -c "SHOW superuser_reserved_connections;"
 ```
 
-![Valores de max_connections](img/captura-11.png)
+![Valores de max_connections](img/img11.png)
 
 ### 4.3 Superar el límite
 
@@ -605,7 +605,7 @@ wait'
 
 **Nota sobre la cifra exacta:** con 52 ranuras normales cabría esperar 8 rechazos y no 9. No he verificado la causa de esa diferencia de una unidad. Para dejarlo comprobado se puede contar, durante la prueba, las sesiones abiertas con `SELECT count(*), backend_type FROM pg_stat_activity GROUP BY 2;`. Lo relevante para el requisito es que el servidor rechaza al superar el límite y muestra el error correspondiente.
 
-![Superación del límite de conexiones](img/captura-12.png)
+![Superación del límite de conexiones](img/img12.png)
 
 ---
 
@@ -686,7 +686,7 @@ docker exec empresa-db psql -U postgres -c "SELECT spcname, pg_tablespace_locati
 
 `pg_default` y `pg_global` viven dentro del directorio de datos, por eso su ubicación aparece vacía.
 
-![Ubicación de los tablespaces](img/captura-13.png)
+![Ubicación de los tablespaces](img/img13.png)
 
 ### 5.4 Qué objetos hay en cada espacio
 
@@ -709,7 +709,7 @@ docker exec empresa-db psql -U postgres -d empresa -c "SELECT schemaname, indexn
  empleados  | empleados_pkey | tbs_empleados
 ```
 
-![Tablas e índices por tablespace](img/captura-14.png)
+![Tablas e índices por tablespace](img/img14.png)
 
 ### 5.5 Del catálogo al fichero físico
 
@@ -766,7 +766,7 @@ asgbd-p1_vol_pgdata -> /var/lib/postgresql/data
 
 Cada tablespace está en un volumen distinto, lo que cumple el requisito.
 
-![Fichero físico y volúmenes](img/captura-15.png)
+![Fichero físico y volúmenes](img/img15.png)
 
 ### 5.6 Persistencia tras reiniciar el contenedor
 
@@ -788,7 +788,7 @@ empresa-db
    2 |         3
 ```
 
-![Datos de los dos espacios tras el reinicio](img/captura-16.png)
+![Datos de los dos espacios tras el reinicio](img/img16.png)
 
 ---
 
@@ -842,7 +842,7 @@ docker exec empresa-db sh -c 'grep -h "rejects" /var/log/postgresql/*.log'
 
 Tras destruir y recrear el contenedor, **las mismas dos líneas siguen apareciendo**, porque el fichero vive en el volumen `vol_logs`.
 
-![Rechazos en el log antes y después de destruir el contenedor](img/captura-17.png)
+![Rechazos en el log antes y después de destruir el contenedor](img/img17.png)
 
 ---
 
@@ -928,7 +928,7 @@ ERROR:  permission denied for schema empleados
 | `ALTER TABLE` | `must be owner of table` | Ídem |
 | Leer empleados | `permission denied for schema empleados` | El ERP solo accede a sus datos |
 
-![Operaciones permitidas y denegadas al ERP](img/captura-18.png)
+![Operaciones permitidas y denegadas al ERP](img/img18.png)
 
 ### 7.4 Atributos de las cuentas
 
@@ -949,7 +949,7 @@ docker exec empresa-db psql -U postgres -c "SELECT r.rolname AS rol, m.rolname A
  erp_app | erp_rw
 ```
 
-![Atributos de las cuentas del ERP](img/captura-19.png)
+![Atributos de las cuentas del ERP](img/img19.png)
 
 ### 7.5 Superar el límite de la cuenta
 
@@ -972,7 +972,7 @@ wait'
 
 De 50 intentos, 45 entran y **5 son rechazados**, justo el exceso sobre el límite. El mensaje (`for role "erp_app"`) es distinto al del apartado 4 porque aquí actúa el límite **de la cuenta**, que se alcanza antes que el global.
 
-![Límite de conexiones del ERP](img/captura-20.png)
+![Límite de conexiones del ERP](img/img20.png)
 
 Después se limpia el dato de prueba:
 
@@ -1040,7 +1040,7 @@ ERROR:  permission denied for table empleados
 
 `SELECT *` también falla porque incluye la columna `salario`: PostgreSQL exige privilegio sobre **todas** las columnas referenciadas. Los analistas deben nombrar las columnas.
 
-![Analista: consulta permitida y salario rechazado](img/captura-21.png)
+![Analista: consulta permitida y salario rechazado](img/img21.png)
 
 ### 8.3 Personal de RRHH
 
@@ -1065,7 +1065,7 @@ UPDATE 1
 
 RRHH ve y modifica salarios, pero no tiene acceso al ERP. La última sentencia restaura el valor original.
 
-![Operaciones del personal de RRHH](img/captura-22.png)
+![Operaciones del personal de RRHH](img/img22.png)
 
 ### 8.4 Alta de un analista nuevo: solo asignar el rol
 
@@ -1112,7 +1112,7 @@ DETAIL:  User does not have CONNECT privilege.
 
 Al retirar el rol, la persona pierde **todos** los privilegios, incluso el de conectarse. Esto se debe a que se hizo `REVOKE ALL ON DATABASE empresa FROM PUBLIC` y el `CONNECT` se concedió únicamente a los roles de grupo. Es un comportamiento deseable en una baja.
 
-![Alta y baja de un analista](img/captura-23.png)
+![Alta y baja de un analista](img/img23.png)
 
 Limpieza:
 
@@ -1145,7 +1145,7 @@ docker exec empresa-db psql -U postgres -d empresa -c "SELECT grantee, table_nam
 
 La segunda consulta demuestra, desde el diccionario de datos, que `rol_analista` tiene `SELECT` sobre `id`, `nombre` y `departamento`, y **no** sobre `salario`.
 
-![Roles, caducidad y privilegios por columna](img/captura-24.png)
+![Roles, caducidad y privilegios por columna](img/img24.png)
 
 ---
 
