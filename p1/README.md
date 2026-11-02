@@ -217,29 +217,6 @@ docker compose down -v
 ./setup-env.sh
 ```
 
-```text
- ✔ Volume p1_vol_erp         Created
- ✔ Volume p1_vol_empleados   Created
- ✔ Volume p1_vol_pgdata      Created
- ✔ Network p1_interna        Created
- ✔ Network p1_visitantes     Created
- ✔ Volume p1_vol_logs        Created
- ✔ Container p1-init-perms-1 Exited
- ✔ Container empresa-db      Healthy
->> Ejecutando sql/01-estructura.sql
-CREATE ROLE
-CREATE ROLE
-CREATE TABLESPACE
-CREATE TABLESPACE
-CREATE DATABASE
-...
->> Ejecutando sql/02-roles-privilegios.sql
-...
-Entorno listo.
-```
-
-> La salida original se hizo con el nombre de proyecto anterior (`p1`). Hoy los volúmenes se llaman `asgbd-p1_vol_*` (véase el apartado de problemas).
-
 ![Montaje desde cero con setup-env.sh](img/img2.png)
 
 ### 1.6 Evidencia: versión, puertos, memoria y redes
@@ -603,7 +580,16 @@ wait'
 
 **Interpretación:** el servidor rechaza las conexiones cuando se agotan las ranuras de usuarios normales y solo quedan las reservadas.
 
-**Nota sobre la cifra exacta:** con 52 ranuras normales cabría esperar 8 rechazos y no 9. No he verificado la causa de esa diferencia de una unidad. Para dejarlo comprobado se puede contar, durante la prueba, las sesiones abiertas con `SELECT count(*), backend_type FROM pg_stat_activity GROUP BY 2;`. Lo relevante para el requisito es que el servidor rechaza al superar el límite y muestra el error correspondiente.
+**Verificación con `pg_stat_activity`:** durante la prueba había 52 sesiones de tipo
+`client backend`. Una es la propia consulta del DBA (que puede usar las ranuras
+reservadas), por lo que había 51 sesiones de prueba abiertas, lo que coincide con
+60 intentos − 9 rechazos. El límite teórico para usuarios normales es 52
+(`max_connections` − `superuser_reserved_connections`) y en la práctica se observaron
+51. No he determinado el motivo de esa diferencia de una unidad. Lo relevante para el
+requisito es que, al superar el límite, el servidor rechaza la conexión con el error
+esperado.
+
+![Sesiones abiertas durante la prueba](img/img25.png)
 
 ![Superación del límite de conexiones](img/img12.png)
 
@@ -1148,6 +1134,24 @@ La segunda consulta demuestra, desde el diccionario de datos, que `rol_analista`
 ![Roles, caducidad y privilegios por columna](img/img24.png)
 
 ---
+
+## Verificación de limpieza del entorno
+
+Tras las pruebas que modifican el estado del servidor, se comprueba que el entorno
+vuelve a su situación inicial.
+
+### Parámetros de memoria restaurados
+![Parámetros restaurados](img/img9.1.png)
+
+### Datos del ERP sin restos de prueba
+![Clientes del ERP](img/img10.1.png)
+
+### Salario restaurado
+![Salario restaurado](img/img18.1.png)
+
+### Cuenta de prueba eliminada
+![analista4 eliminado](img/img23.1.png)
+
 
 ## 9. Ampliación: caída súbita (opcional)
 
