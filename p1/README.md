@@ -1155,20 +1155,72 @@ vuelve a su situación inicial.
 
 ## 9. Ampliación: caída súbita (opcional)
 
-> **Pendiente de realizar.** Esta sección se completará tras ejecutar las pruebas.
+## 9. Ampliación: caída súbita
 
-Configuración ya aplicada: `restart: unless-stopped` en el `docker-compose.yml`.
+**Necesidad:** el servidor puede caer en cualquier momento y no puede dejar los datos en un estado inconsistente.
 
-```bash
-docker inspect empresa-db -f '{{.HostConfig.RestartPolicy.Name}}'
-```
+### 9.1 Configuración
 
-Por documentar:
+El servicio tiene `restart: unless-stopped` en el `docker-compose.yml`. Valores de partida:
 
-- [ ] Caso A: transacción con `COMMIT` conservada y transacción sin confirmar descartada tras `docker kill -s KILL`
-- [ ] Caso B: pérdida de una transacción confirmada con `synchronous_commit = off`
+![Política de reinicio y parámetros de durabilidad](img/img26.png)
 
----
+| Parámetro | Valor | Significado |
+|---|---|---|
+| `synchronous_commit` | `on` | El `COMMIT` no vuelve hasta que el WAL está en disco |
+| `fsync` | `on` | PostgreSQL fuerza la escritura física a disco |
+| `wal_writer_delay` | `200ms` | Cada cuánto escribe el WAL el proceso en segundo plano |
+
+### 9.2 Caso A: lo confirmado se conserva y lo no confirmado se descarta
+
+Se abre una transacción sin confirmar y, en otra sesión, se inserta una fila confirmada:
+
+![Transacción sin confirmar y fila confirmada](img/img27.png)
+
+La fila `CON commit` tiene `id = 2` porque la fila sin confirmar consumió el valor 1 de la secuencia: las secuencias no se revierten con un rollback.
+
+Se simula la caída enviando `SIGQUIT` al proceso principal (`kill -QUIT 1`), que provoca una parada inmediata sin cierre limpio, como un corte de luz a nivel de proceso:
+
+![El contenedor se reinicia solo](img/img28.png)
+
+`Reinicios: 1` y estado `healthy`: Docker levantó el servidor por la política de reinicio.
+
+![Recuperación automática y datos tras la caída](img/img29.png)
+
+El log muestra `received immediate shutdown request`, después `database system was not properly shut down; automatic recovery in progress`, y las líneas `redo starts` y `redo done`. Solo sobrevive la fila `CON commit`.
+
+**Por qué:** PostgreSQL escribe cada cambio en el WAL antes de confirmarlo. Al arrancar tras una caída, rehace (*redo*) lo confirmado y descarta lo que no tiene registro de `COMMIT`.
+
+### 9.3 Caso B: perder una transacción confirmada
+
+`synchronous_commit = off` mejora el rendimiento porque el `COMMIT` no espera a que el WAL llegue a disco. A cambio, una caída en ese intervalo pierde transacciones que el cliente creyó confirmadas. Para ampliar la ventana se sube `wal_writer_delay` a `10s` y se inserta en modo asíncrono, matando el servidor justo después:
+
+![Inserción asíncrona seguida de caída](img/img30.png)
+
+El cliente recibe `INSERT 0 1`. Tras la recuperación:
+
+![La transacción asíncrona se ha perdido](img/img31.png)
+
+`commit asincrono` **no está en la tabla**. La base queda consistente y sin corrupción: solo se pierden las últimas transacciones.
+
+| Parámetro | Efecto | Riesgo |
+|---|---|---|
+| `synchronous_commit = off` | `COMMIT` inmediato, más rendimiento | Pérdida de hasta unas 3 veces `wal_writer_delay` de transacciones confirmadas |
+| `fsync = off` | Aún más rápido | **Puede corromper la base** tras un fallo del sistema. No se ha probado |
+
+`fsync = off` no se reproduce matando un contenedor, porque el kernel del host sigue vivo y conserva lo ya escrito.
+
+### 9.4 Limpieza
+
+`ALTER SYSTEM` escribe en `postgresql.auto.conf`, así que se restablece y se comprueba que los datos reales siguen intactos:
+
+![Entorno restaurado](img/img32.png)
+
+### 9.5 Observaciones y límites
+
+- Con `docker kill -s KILL` desde fuera, el contenedor **no se reinició** (`Reinicios: 0`). Con `kill -QUIT 1` desde dentro sí. Mi hipótesis es que Docker trata `docker kill` como una parada manual, pero no lo he verificado.
+- La prueba del caso B se logró en el primer intento. La pérdida depende de que la caída ocurra antes de que el WAL writer escriba, por lo que no es determinista.
+- `kill -QUIT` mata el proceso, no apaga la máquina. Un corte eléctrico real es más severo.
 
 ## 10. Problemas encontrados y cómo se resolvieron
 
