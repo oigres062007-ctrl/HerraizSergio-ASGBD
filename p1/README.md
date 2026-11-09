@@ -1476,6 +1476,7 @@ Vuelven `200ms` y `on`, y los datos reales siguen intactos (2 clientes y 3 emple
 | `bash: .env: No such file or directory` | Ejecuté `source .env` desde la raíz y no desde `p1/` | Ejecutarlo siempre desde `p1/` |
 | 9 rechazos en vez de los 8 previstos | Una sesión adicional (la del DBA) ocupa una ranura | Medido con `pg_stat_activity` (apartado 4.3). Queda pendiente repetir la prueba sin sesión adicional |
 | `container ... is not running` en la ampliación | `docker kill -s KILL` dejó el contenedor parado y la política de reinicio no actuó | Repetir las pruebas simulando la caída con `kill -QUIT 1` desde dentro del contenedor |
+| `.env` subido en el primer commit | El `.gitignore` aún no estaba activo cuando hice el primer `git add .` | `git rm --cached p1/.env` en un commit posterior. Se comprobó con `git show` que el fichero solo contenía los valores de la plantilla (`cambiame`), sin contraseñas reales |
 
 **Lección aprendida:** el nombre del proyecto de Compose se usa como prefijo de los volúmenes y como etiqueta de pertenencia de las redes. Cambiarlo con recursos ya creados los deja huérfanos, por lo que hay que hacer `docker compose down -v` **antes** de renombrar.
 
