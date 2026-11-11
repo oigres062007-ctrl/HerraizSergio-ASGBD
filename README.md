@@ -12,7 +12,7 @@ Repositorio de prácticas del módulo **Administración de Sistemas Gestores de 
 
 | Práctica | Descripción | SGBD | Estado | Documentación |
 |---|---|---|---|---|
-| **P1** | Despliegue y administración de un servidor de base de datos con Docker: red, memoria, conexiones, almacenamiento, trazabilidad y control de accesos | PostgreSQL 16.4 | En desarrollo | [p1/README.md](p1/README.md) |
+| **P1** | Despliegue y administración de un servidor de base de datos con Docker: red, memoria, conexiones, almacenamiento, trazabilidad y control de accesos | PostgreSQL 16.4 | Completada | [p1/README.md](p1/README.md) |
 
 ---
 
